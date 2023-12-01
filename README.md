@@ -1,4 +1,4 @@
-# [Advent of Code 2022](https://adventofcode.com/2022)
+# [Advent of Code 2023](https://adventofcode.com/2023)
 
 ## Generate files for Day `<n>` from templates
 
