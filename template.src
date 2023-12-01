@@ -1,0 +1,28 @@
+#day{{n}}.py 2022
+import unittest
+
+def part1(lines):
+    return 0
+
+def part2(lines):
+    return 0
+
+class TestDay{{n}}(unittest.TestCase):
+    def test_1a(self):
+        with open('./test{{n}}.txt', 'r') as f:
+            self.assertEqual(part1(list(f)), None)
+
+    # def test_1(self):
+    #     with open('./input{{n}}.txt', 'r') as f:
+    #         self.assertEqual(part1(list(f)), None)
+
+    # def test_2a(self):
+    #     with open('./test{{n}}.txt', 'r') as f:
+    #         self.assertEqual(part2(list(f)), None)
+
+    # def test_2(self):
+    #     with open('./input{{n}}.txt', 'r') as f:
+    #         self.assertEqual(part2(list(f)), None)
+
+if __name__ == '__main__':
+    unittest.main()

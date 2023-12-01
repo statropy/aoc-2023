@@ -1,0 +1,45 @@
+// day{{n}}.cpp
+#include <gtest/gtest.h>
+#include <string>
+#include <fstream>
+#include <numeric>
+using namespace std;
+
+class Day{{n}} {
+protected:
+
+public:
+    Day{{n}}(const char *file) {
+        ifstream infile(file);
+        string line;
+
+        while (getline(infile,line)) {
+
+        }
+        infile.close();
+    }
+
+    int part1() {
+        return 0;
+    }
+
+    int part2() {
+        return 0;
+    }
+};
+
+TEST(Day{{n}}, Part1_test) {
+    ASSERT_EQ(Day{{n}}("../test{{n}}.txt").part1(), 0);
+}
+
+TEST(Day{{n}}, Part1) {
+    ASSERT_EQ(Day{{n}}("../input{{n}}.txt").part1(), 0);
+}
+
+TEST(Day{{n}}, Part2_test) {
+    ASSERT_EQ(Day{{n}}("../test{{n}}.txt").part2(), 0);
+}
+
+TEST(Day{{n}}, Part2) {
+    ASSERT_EQ(Day{{n}}("../input{{n}}.txt").part2(), 0);
+}
