@@ -1,4 +1,4 @@
-#day{{n}}.py 2022
+#day{{n}}.py 2023
 import unittest
 
 def part1(lines):

@@ -1,4 +1,4 @@
-#day2.py 2022
+#day2.py 2023
 import unittest
 from math import prod
 
