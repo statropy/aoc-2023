@@ -16,7 +16,7 @@ def check1(line: str):
                 return 0
     return game
 
-def check2(line:str) -> tuple[int, int, int]:
+def check2(line:str) -> int:
     bag = {'red':0, 'blue':0, 'green':0}
     _, record = line.strip().split(':')
     runs = record.split(';')
