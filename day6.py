@@ -29,8 +29,8 @@ def part1(lines):
 
 
 def part2(lines):
-    x, y = ["".join(line.split(":")[1].split()) for line in lines]
-    return findrange(int(x), -int(y))
+    t, d = ["".join(line.split(":")[1].split()) for line in lines]
+    return findrange(int(t), -int(d))
 
 
 class TestDay6(unittest.TestCase):
