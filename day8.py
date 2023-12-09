@@ -28,7 +28,7 @@ def part1(lines: list[str]) -> int:
                 return steps
 
 
-def part2(lines):
+def part2all(lines):
     instructions, seq = parse(lines)
     nodes = [n for n in seq.keys() if n[2] == "A"]
     found = []
@@ -48,8 +48,30 @@ def part2(lines):
                         break
                     else:
                         found[i][node] = step
-
+    # would need to find the minimum LCM for each combination
+    # of exit nodes found, but input only has 1 exit per starting point
     return lcm(*[min(node.values()) for node in found])
+
+
+# assume only one solution per starting point
+def part2(lines):
+    instructions, seq = parse(lines)
+    nodes = [n for n in seq.keys() if n[2] == "A"]
+    found = [0] * len(nodes)
+
+    for i, node in enumerate(nodes):
+        run = True
+        step = 0
+        while run:
+            for dir in instructions:
+                node = seq[node][dir]
+                step += 1
+                if node[2] == "Z":
+                    found[i] = step
+                    run = False
+                    break
+
+    return lcm(*found)
 
 
 class TestDay8(unittest.TestCase):
@@ -72,6 +94,14 @@ class TestDay8(unittest.TestCase):
     def test_2(self):
         with open("./input8.txt", "r") as f:
             self.assertEqual(part2(list(f)), 9064949303801)
+
+    def test_2a(self):
+        with open("./test8c.txt", "r") as f:
+            self.assertEqual(part2all(list(f)), 6)
+
+    def test_2(self):
+        with open("./input8.txt", "r") as f:
+            self.assertEqual(part2all(list(f)), 9064949303801)
 
 
 if __name__ == "__main__":
