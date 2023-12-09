@@ -4,7 +4,8 @@ from math import lcm
 
 
 def parse(lines: list[str]) -> tuple[str, dict]:
-    instructions = lines[0].strip()
+    dirint = {"L": 0, "R": 1}
+    instructions = [dirint[d] for d in lines[0].strip()]
     seq = {
         k: (r.strip()[1:], l.strip()[:-1])
         for k, r, l in (
@@ -18,11 +19,10 @@ def parse(lines: list[str]) -> tuple[str, dict]:
 def part1(lines: list[str]) -> int:
     instructions, seq = parse(lines)
     steps = 0
-    dirint = {"L": 0, "R": 1}
     place = "AAA"
     while True:
         for dir in instructions:
-            place = seq[place][dirint[dir]]
+            place = seq[place][dir]
             steps += 1
             if place == "ZZZ":
                 return steps
@@ -30,7 +30,6 @@ def part1(lines: list[str]) -> int:
 
 def part2(lines):
     instructions, seq = parse(lines)
-    dirint = {"L": 0, "R": 1}
     nodes = [n for n in seq.keys() if n[2] == "A"]
     found = []
     for _ in nodes:
@@ -41,7 +40,7 @@ def part2(lines):
         step = 0
         while run:
             for dir in instructions:
-                node = seq[node][dirint[dir]]
+                node = seq[node][dir]
                 step += 1
                 if node[2] == "Z":
                     if node in found[i].keys():
