@@ -13,8 +13,12 @@ class Pos(object):
         self.x: int = x
         self.y: int = y
         self.grid: Grid = grid
-        if last is not None and self == last:
-            raise ValueError("Backtracking")
+        # if last is not None and self == last:
+        #     logging.error("backtrack")
+        #     raise ValueError("Backtracking")
+        # if last is None:
+        #     self.last = self
+        # else:
         self.last = last
 
     def __repr__(self):
@@ -32,25 +36,16 @@ class Pos(object):
     def move(self, direction: Literal["N", "S", "E", "W"]):
         try:
             p = self._move(*self.nextpos[direction])
-            # logging.debug(f"{self} -> {p}")
-            self.grid.add(p, direction)
-            # if (
-            #     self.grid.tile(p) in self.legal[direction]
-            #     and p not in self.grid.visited
-            # ):
-            #     self.grid.add(p)
-        except ValueError:
-            pass  # invalid
-        # except Exception as e:
-        #     print(e, type(e), self, self.last)
-
-    # def coords(self):
-    #     return (self.x, self.y)
+            if self.last is None or self.last != p:
+                self.grid.add(p, direction)
+        except ValueError as e:
+            logging.debug(e)
 
 
 class Grid(object):
-    legal = {"N": "|7F", "S": "|LJ", "E": "-J7", "W": "-LF"}
-    # legal = {
+    legal_to = {"N": "|7F", "S": "|LJ", "E": "-J7", "W": "-LF"}
+    legal_from = {"N": "S|LJ", "S": "S|7F", "E": "S-LF", "W": "S-J7"}
+    # logging.debug = {
     #     "N": [ord("|"), ord("7"), ord("F")],
     #     "S": [ord("|"), ord("L"), ord("J")],
     #     "E": [ord("-"), ord("J"), ord("7")],
@@ -60,6 +55,7 @@ class Grid(object):
     def __init__(self, lines: list[str]):
         # self.grid = lines
         self.grid = []
+        self.display = []
         self.start: Pos = None
         self.nextstep = []
         self.steps = 0
@@ -69,18 +65,21 @@ class Grid(object):
 
         for y, row in enumerate(lines):
             self.grid.append([c for c in row.strip()])
+            self.display.append([c for c in row.strip()])
             if self.start is None:
                 try:
                     x = row.index("S")
                     start = Pos(self, x, y)
                     self.current = set([start])
                     self.visited = set([start])
-                    # self.grid[-1][x] = 0
                 except ValueError:
                     continue
 
     def tile(self, pos: Pos) -> str:
         return self.grid[pos.y][pos.x]
+
+    def mark(self, pos: Pos, c: str = " "):
+        self.display[pos.y][pos.x] = c
 
     @property
     def width(self) -> int:
@@ -91,7 +90,11 @@ class Grid(object):
         return len(self.grid)
 
     def add(self, pos: Pos, direction: Literal["N", "S", "E", "W"]):
-        if self.tile(pos) in self.legal[direction]:
+        if (
+            # pos != pos.last and
+            self.tile(pos) in self.legal_to[direction]
+            and self.tile(pos.last) in self.legal_from[direction]
+        ):
             logging.debug(f" {direction} {pos.last} -> {pos} {self.tile(pos)}")
             self.nextstep.append(pos)
 
@@ -100,8 +103,6 @@ class Grid(object):
             if logging.getLogger().level == logging.DEBUG:
                 print("-" * 50)
             self.nextstep = []
-            # for pos in self.current:
-            #     self.grid[pos.y][pos.x] = " "
             for pos in self.current:
                 for d in "NSEW":
                     pos.move(d)
@@ -110,11 +111,10 @@ class Grid(object):
             self.steps += 1
 
             for pos in self.current:
-                self.grid[pos.y][pos.x] = "*"  # ord("*")
-            # if len(self.nextstep) == 2 and self.nextstep[0] == self.nextstep[1]:
+                self.mark(pos, "*")
             if len(self.current) != len(self.nextstep):
                 if self.left is not None:
-                    self.grid[self.left.y][self.right.x] = " "
+                    self.mark(self.left)
                 found = set()
                 for pos in self.nextstep:
                     if pos in found:
@@ -126,16 +126,15 @@ class Grid(object):
                 for pos in self.nextstep:
                     if pos == self.left:
                         self.right = pos
-                        self.grid[pos.y][pos.x] = "+"
+                        self.mark(pos, "+")
                 logging.debug(f"A: {self.steps} {self.current} {self.nextstep}")
                 self.answer = self.steps
             if logging.getLogger().level == logging.DEBUG:
                 print(self)
             for pos in self.current:
-                self.grid[pos.y][pos.x] = " "
+                self.mark(pos)
         for pos in self.current:
-            self.grid[pos.y][pos.x] = " "
-        print(self.current)
+            self.mark(pos)
         return self.answer
 
     def retrace(self):
@@ -143,7 +142,7 @@ class Grid(object):
 
     def __repr__(self):
         output = ""
-        for row in self.grid:
+        for row in self.display:
             output += ("".join([c for c in row])) + "\n"
         return output
 
@@ -151,7 +150,7 @@ class Grid(object):
 def part1(lines: list[str]) -> int:
     grid = Grid(lines)
     a = grid.findloop()
-    print(grid)
+    # print(grid)
     return a
 
 
@@ -164,25 +163,25 @@ def part2(lines: list[str]) -> int:
     return None
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 class TestDay10(unittest.TestCase):
-    # def test_1a(self):
-    #     with open("./test10.txt", "r") as f:
-    #         self.assertEqual(part1(list(f)), 4)
-
-    # def test_1b(self):
-    #     with open("./test10b.txt", "r") as f:
-    #         self.assertEqual(part1(list(f)), 8)
-
-    # def test_1(self):
-    #     with open("./input10.txt", "r") as f:
-    #         self.assertEqual(part1(list(f)), 6733)
-
-    def test_2a(self):
+    def test_1a(self):
         with open("./test10.txt", "r") as f:
-            self.assertEqual(part2(list(f)), None)
+            self.assertEqual(part1(list(f)), 4)
+
+    def test_1b(self):
+        with open("./test10b.txt", "r") as f:
+            self.assertEqual(part1(list(f)), 8)
+
+    def test_1(self):
+        with open("./input10.txt", "r") as f:
+            self.assertEqual(part1(list(f)), 6733)
+
+    # def test_2a(self):
+    #     with open("./test10.txt", "r") as f:
+    #         self.assertEqual(part2(list(f)), None)
 
     # def test_2(self):
     #     with open('./input10.txt', 'r') as f:
