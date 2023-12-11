@@ -1,10 +1,10 @@
 #day{{n}}.py 2023
 import unittest
 
-def part1(lines):
+def part1(lines: list[str]) -> int:
     return 0
 
-def part2(lines):
+def part2(lines: list[str]) -> int:
     return 0
 
 class TestDay{{n}}(unittest.TestCase):
