@@ -59,7 +59,7 @@ class Grid(object):
         self.start: Pos = None
         self.nextstep = []
         self.steps = 0
-        self.answer = 0
+        # self.answer = 0
         self.left = None
         self.right = None
 
@@ -112,33 +112,53 @@ class Grid(object):
 
             for pos in self.current:
                 self.mark(pos, "*")
-            if len(self.current) != len(self.nextstep):
-                if self.left is not None:
-                    self.mark(self.left)
-                found = set()
-                for pos in self.nextstep:
-                    if pos in found:
-                        self.left = pos
-                        logging.debug(f"Remove {pos}")
-                        self.current.remove(pos)
-                    else:
-                        found.add(pos)
-                for pos in self.nextstep:
-                    if pos == self.left:
-                        self.right = pos
-                        self.mark(pos, "+")
-                logging.debug(f"A: {self.steps} {self.current} {self.nextstep}")
-                self.answer = self.steps
+            if len(self.current) == 1 and len(self.nextstep) == 2:
+                logging.info(f"A: {self.steps} {self.current} {self.nextstep}")
+                self.current = set()
+                self.mark(self.nextstep[0], "+")
+                # self.answer = self.steps
+                # logging.info(f"A: {self.steps} {self.current} {self.nextstep}")
+            #     # if self.left is not None:
+            #     #     self.mark(self.left)
+            #     found = set()
+            #     for pos in self.nextstep:
+            #         if pos in found:
+            #             self.left = pos
+            #             logging.debug(f"Remove {pos}")
+            #             self.current.remove(pos)
+            #         else:
+            #             found.add(pos)
+            #     for pos in self.nextstep:
+            #         if pos == self.left:
+            #             self.right = pos
+            #             self.mark(pos, "+")
+            # logging.info(f"A: {self.steps} {self.current} {self.nextstep}")
+            # self.answer = self.steps
             if logging.getLogger().level == logging.DEBUG:
                 print(self)
             for pos in self.current:
                 self.mark(pos)
         for pos in self.current:
             self.mark(pos)
-        return self.answer
+        return self.steps
 
     def retrace(self):
-        pass
+        while True:
+            for pos in self.nextstep:
+                if pos.last is None:
+                    return
+                self.mark(pos.last, "+")
+            self.nextstep = [pos.last for pos in self.nextstep]
+        # self.current = set([self.left, self.right])
+
+    def clearpipes(self):
+        # pipes = "|7FLJ-"
+        nextdisplay = []
+        for row in self.display:
+            nextdisplay.append([c if c == "+" else " " for c in row])
+        self.display = nextdisplay
+
+        # self.display.append([c for c in row.strip()])
 
     def __repr__(self):
         output = ""
@@ -150,7 +170,7 @@ class Grid(object):
 def part1(lines: list[str]) -> int:
     grid = Grid(lines)
     a = grid.findloop()
-    # print(grid)
+    print(grid)
     return a
 
 
@@ -158,7 +178,8 @@ def part2(lines: list[str]) -> int:
     grid = Grid(lines)
     grid.findloop()
     grid.retrace()
-    # print(grid)
+    grid.clearpipes()
+    print(grid)
 
     return None
 
@@ -167,25 +188,29 @@ logging.basicConfig(level=logging.INFO)
 
 
 class TestDay10(unittest.TestCase):
-    def test_1a(self):
-        with open("./test10.txt", "r") as f:
-            self.assertEqual(part1(list(f)), 4)
-
-    def test_1b(self):
-        with open("./test10b.txt", "r") as f:
-            self.assertEqual(part1(list(f)), 8)
-
-    def test_1(self):
-        with open("./input10.txt", "r") as f:
-            self.assertEqual(part1(list(f)), 6733)
-
-    # def test_2a(self):
+    # def test_1a(self):
     #     with open("./test10.txt", "r") as f:
-    #         self.assertEqual(part2(list(f)), None)
+    #         self.assertEqual(part1(list(f)), 4)
 
-    # def test_2(self):
-    #     with open('./input10.txt', 'r') as f:
-    #         self.assertEqual(part2(list(f)), None)
+    # def test_1b(self):
+    #     with open("./test10b.txt", "r") as f:
+    #         self.assertEqual(part1(list(f)), 8)
+
+    # def test_1(self):
+    #     with open("./input10.txt", "r") as f:
+    #         self.assertEqual(part1(list(f)), 6733)
+
+    def test_2a(self):
+        with open("./test10.txt", "r") as f:
+            self.assertEqual(part2(list(f)), None)
+
+    def test_2c(self):
+        with open("./test10c.txt", "r") as f:
+            self.assertEqual(part2(list(f)), None)
+
+    def test_2(self):
+        with open("./input10.txt", "r") as f:
+            self.assertEqual(part2(list(f)), None)
 
 
 if __name__ == "__main__":
