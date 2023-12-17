@@ -8,71 +8,45 @@ class Node(object):
     GRID: list[int]
     WIDTH: int
     HEIGHT: int
-    visited: dict["Node":int]
-    q: Queue
-    found: set[int]
+    part: int
 
     @classmethod
-    def search(cls, lines: list[str], x: int = 0, y: int = 0):
+    def search(cls, lines: list[str], x: int = 0, y: int = 0, part: int = 1):
+        cls.part = part
         cls.WIDTH = len(lines[0]) - 1
         cls.HEIGHT = len(lines)
         cls.GRID = [0] * (cls.HEIGHT * cls.WIDTH)
         for row in range(cls.HEIGHT):
             for col in range(cls.WIDTH):
                 cls.GRID[row * cls.WIDTH + col] = int(lines[row][col])
-        cls.visited = {}
-        cls.found = set()
-        cls.q = Queue()
+        visited: dict["Node":int] = {}
+        found: set[int] = set()
+        q: Queue = Queue()
         start = Node(x, y, "")
-        cls.q.put(start)
-        # cls.visited[start] = 0
-        count = 0
+        q.put(start)
 
-        while not cls.q.empty():
-            p = False
-            count += 1
-            n = cls.q.get()
-            # print(count)
-            # if n.x == 8 and n.y == 2:
-            #     print("Hello!", n)
-            #     p = True
+        while not q.empty():
+            n = q.get()
             for d in "NSEW":
                 if n.backtrack(d):
-                    if p:
-                        print("backtrack", d)
                     continue
                 child: Node = n.spawn(d)
                 if child is None:
                     continue
-                # if child in cls.visited:
-                w = cls.visited.get(child)
-                chscore = cls.score(child.x, child.y) + cls.visited.get(n, 0)
+                w = visited.get(child)
+                chscore = child.score() + visited.get(n, 0)
                 if w is None or chscore < w:
-                    cls.visited[child] = chscore
-                    cls.q.put(child)
+                    visited[child] = chscore
+                    q.put(child)
 
                 if child.atgoal():
-                    if p:
-                        print("Found from", n, "=>", child)
-                    cls.found.add(cls.visited[child])
-                #     # if len(cls.found) > 0 and child.weight >= min(cls.found):
-                #     #     if p:
-                #     #         print("Bail  from", n, "=>", child)
-                #     # else:
-                #         if p:
-                #             print("Add   from", n, "=>", child)
-                #         cls.q.put(child)
-                # else:
-                #     if p:
-                #         print("Repeat", child)
-
-        return min(cls.found)
+                    found.add(visited[child])
+        return min(found)
 
     def __init__(self, x: int, y: int, moving: str):
         self.x = x
         self.y = y
-        self.d = moving  # NSEW, up to 3 times
-        # self.weight = weight
+        self.d = moving
 
     def __hash__(self) -> int:
         return hash((self.x, self.y, self.d))
@@ -86,7 +60,7 @@ class Node(object):
         )
 
     def __repr__(self):
-        return f"({self.x},{self.y}):{self.score(self.x, self.y)} [{self.d}]"
+        return f"({self.x},{self.y}):{self.score(self)} [{self.d}]"
 
     def backtrack(self, d: Literal["N", "S", "E", "W"]):
         if self.d == "":
@@ -94,21 +68,31 @@ class Node(object):
         return "SNWE"["NSEW".index(self.d[-1])] == d
 
     def isvalid(self, x: int, y: int, d: Literal["N", "S", "E", "W"]):
-        # print("isvalid", d, d + d, d * d)
-        return (
+        if self.part == 1:
+            return (
+                x >= 0
+                and x < self.WIDTH
+                and y >= 0
+                and y < self.HEIGHT
+                and self.d + d != d * 4
+            )
+        a = (
             x >= 0
             and x < self.WIDTH
             and y >= 0
             and y < self.HEIGHT
-            and self.d + d != d * 4
+            and self.d + d != d * 11
         )
+        if a:
+            if len(self.d) > 0 and len(self.d) < 4:
+                return self.d == d * len(self.d)
+        return a
 
     def atgoal(self) -> bool:
         return self.x == self.WIDTH - 1 and self.y == self.HEIGHT - 1
 
-    @classmethod
-    def score(cls, x: int, y: int) -> int:
-        return cls.GRID[y * cls.WIDTH + x]
+    def score(self) -> int:
+        return self.GRID[self.y * self.WIDTH + self.x]
 
     def move(self, d: Literal["N", "S", "E", "W"]) -> tuple[int, int]:
         if d == "N":
@@ -119,12 +103,11 @@ class Node(object):
             return (self.x + 1, self.y)
         return (self.x - 1, self.y)
 
-    def spawn(self, d: Literal["N", "S", "E", "W"]):  # -> "Node" | None:
+    def spawn(self, d: Literal["N", "S", "E", "W"]):
         x, y = self.move(d)
         if self.isvalid(x, y, d):
             if d in self.d:
                 d = self.d + d
-            # w = self.score(x, y) + self.weight
             return Node(x, y, d)
         return None
 
@@ -134,7 +117,7 @@ def part1(lines: list[str]) -> int:
 
 
 def part2(lines: list[str]) -> int:
-    return 0
+    return Node.search(lines, part=2)
 
 
 class TestDay17(unittest.TestCase):
@@ -142,17 +125,17 @@ class TestDay17(unittest.TestCase):
         with open("./test17.txt", "r") as f:
             self.assertEqual(part1(list(f)), 102)
 
-    # def test_1(self):
-    #     with open("./input17.txt", "r") as f:
-    #         self.assertEqual(part1(list(f)), 1260)
+    def test_1(self):
+        with open("./input17.txt", "r") as f:
+            self.assertEqual(part1(list(f)), 1260)
 
-    # def test_2a(self):
-    #     with open('./test17.txt', 'r') as f:
-    #         self.assertEqual(part2(list(f)), None)
+    def test_2a(self):
+        with open("./test17.txt", "r") as f:
+            self.assertEqual(part2(list(f)), 94)
 
-    # def test_2(self):
-    #     with open('./input17.txt', 'r') as f:
-    #         self.assertEqual(part2(list(f)), None)
+    def test_2(self):
+        with open("./input17.txt", "r") as f:
+            self.assertEqual(part2(list(f)), 1416)
 
 
 if __name__ == "__main__":
