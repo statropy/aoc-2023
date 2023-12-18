@@ -3,18 +3,32 @@ import unittest
 import numpy as np
 
 
-def makecubes(lines: list[str]) -> list[int]:
-    return [
-        int(line.strip().replace("O", "0").replace(".", "0").replace("#", "1"), 2)
-        for line in lines
-    ]
+def makecubes(lines: list[str]):  # -> np.array[np.array[int]]:
+    return np.array(
+        [
+            [
+                int(x, 2)
+                for x in list(
+                    line.strip().replace("O", "0").replace(".", "0").replace("#", "1")
+                )
+            ]
+            for line in lines
+        ]
+    )
 
 
 def makerocks(lines: list[str]) -> list[int]:
-    return [
-        int(line.strip().replace("O", "1").replace(".", "0").replace("#", "0"), 2)
-        for line in lines
-    ]
+    return np.array(
+        [
+            [
+                int(x, 2)
+                for x in list(
+                    line.strip().replace("O", "1").replace(".", "0").replace("#", "0")
+                )
+            ]
+            for line in lines
+        ]
+    )
 
 
 def show(rocks, cubes, width):
@@ -33,22 +47,29 @@ def show(rocks, cubes, width):
 
 
 def tilt(rocks, cubes):
-    lowest = len(cubes) - 1
-    while lowest > 0:
-        r = 0
+    # changed = True
+    # lowest = len(cubes) - 1
+    # for outer in range(len(cubes) - 1, -1, -1):
+    # while lowest > 0:
+    # while changed:
+    # lowest = -1
+    # r = 0
+    for lowest in range(len(cubes) - 1, -1, -1):
         for i in range(lowest):
-            a = (rocks[i] | rocks[i + 1]) & ~(cubes[i])
-            rocks[i + 1] = rocks[i + 1] & ~(
-                ((cubes[i] | rocks[i]) ^ rocks[i + 1]) & rocks[i + 1]
-            )
-            if a != rocks[i]:
-                r = i
-                rocks[i] = a
-        lowest = r
+            rocks[i], rocks[i + 1] = (rocks[i] | rocks[i + 1]) & ~(cubes[i]), rocks[
+                i + 1
+            ] & ~(((cubes[i] | rocks[i]) ^ rocks[i + 1]) & rocks[i + 1])
+            # # if not np.all(np.equal(a, rocks[i])):
+            # if not changed and np.sum(a) != np.sum(rocks[i]):
+            #     # if i > r:
+            #     #     r = i
+            #     changed = True
+            # rocks[i] = a
+        # lowest = r
 
 
 def score(rocks: list[int]) -> int:
-    return sum([(len(rocks) - y) * rocks[y].bit_count() for y in range(len(rocks))])
+    return sum([(len(rocks) - y) * np.sum(rocks[y]) for y in range(len(rocks))])
 
 
 def part1(lines: list[str]) -> int:
@@ -58,36 +79,38 @@ def part1(lines: list[str]) -> int:
     return score(rocks)
 
 
-def rotate(grid: list[int], width):
-    m = np.array([list(f"{x:0{width}b}") for x in grid])
-    mr = np.rot90(m, axes=(1, 0))
-    return [int("".join(row), 2) for row in mr]
+def rotate(grid):
+    return np.rot90(grid, axes=(1, 0))
+
+
+def tupleize(a):
+    return tuple(tuple(row) for row in a)
 
 
 def part2(lines: list[str]) -> int:
-    widths = [len(lines[0].strip()), len(lines)]
     cubes = makecubes(lines)
     cubeslist = [cubes]
     for i in range(3):
-        cubeslist.append(rotate(cubeslist[i], widths[i % 2]))
+        cubeslist.append(rotate(cubeslist[i]))
 
     rocks = makerocks(lines)
     cycles = 1000000000
     spin = 4
-    order = {}
+    order: dict[np.ndarray[np.ndarray[int]] : int] = {}
     rocklist = []
     for c in range(cycles):
         for orientation in range(spin):
             tilt(rocks, cubeslist[orientation])
-            rocks = rotate(rocks, widths[orientation % 2])
-        if tuple(rocks) in order:
-            offset = order[tuple(rocks)]
+            rocks = rotate(rocks)
+        t = tupleize(rocks)
+        if t in order:
+            offset = order[t]
             loopsize = c - offset
             index = ((cycles - offset - 1) % loopsize) + offset
             return score(rocklist[index])
         else:
-            order[tuple(rocks)] = c
-            rocklist.append(tuple(rocks))
+            order[t] = c
+            rocklist.append(t)
 
     return score(rocks)
 
