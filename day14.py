@@ -1,13 +1,9 @@
 # day14.py 2023
 import unittest
+import numpy as np
 
 
 def makecubes(lines: list[str]) -> list[int]:
-    # cubes = []
-    # for line in lines:
-    #     cubes.append(
-    #         int(line.strip().replace("O", "0").replace(".", "0").replace("#", "1"), 2)
-    #     )
     return [
         int(line.strip().replace("O", "0").replace(".", "0").replace("#", "1"), 2)
         for line in lines
@@ -36,38 +32,13 @@ def show(rocks, cubes, width):
         print(f" {len(rocks)-y:2}")
 
 
-def part1(lines: list[str]) -> int:
-    cubes = makecubes(lines)
-    rocks = makerocks(lines)
-    # print()
-    # for i in range(len(lines)):
-    #     print(
-    #         f"{cubes[i]:03X} | {rocks[i]:03X} = {cubes[i]|rocks[i]:03X} {len(lines)-i:2}"
-    #     )
-
-    # i = 0
-    # r0 = cubes[i] | rocks[i]
-    # r1 = cubes[i + 1] | rocks[i + 1]
-    # r0_new = r0 | rocks[i + 1]
-    # r1_new = r1 & ~((r0 ^ rocks[i + 1]) & rocks[i + 1])  # | cubes[i + 1]
-    # print()
-    # # print(f"{r0:010b}")
-    # # print(f"{r1:010b}")
-    # # print("-" * 50)
-    # # print(f"{r0_new:010b}")
-    # # print(f"{r1_new:010b}")
-
-    # r = [0, 0]
-    # r[i] = rocks[i] | rocks[i + 1]
-    # r[i + 1] = rocks[i + 1] & ~(((cubes[i] | rocks[i]) ^ rocks[i + 1]) & rocks[i + 1])
-    # # rocks[i + 1] = (cubes[i] | rocks[i]) ^ rocks[i + 1]
-    # print(f"{r[i]:010b}")
-    # print(f"{r[i+1]:010b}")
+def tilt(rocks, cubes, cols=0):
     changed = True
     while changed:
-        # show(rocks, cubes, len(lines[0].strip()))
+        if cols:
+            show(rocks, cubes, cols)
         changed = False
-        for i in range(len(lines) - 1):
+        for i in range(len(cubes) - 1):
             a = (rocks[i] | rocks[i + 1]) & ~(cubes[i])
             rocks[i + 1] = rocks[i + 1] & ~(
                 ((cubes[i] | rocks[i]) ^ rocks[i + 1]) & rocks[i + 1]
@@ -76,18 +47,51 @@ def part1(lines: list[str]) -> int:
                 changed = True
             rocks[i] = a
 
-        # for i in range(len(lines)):
-        #     print(f"{rocks[i]:010b} {len(lines)-i:2}")
-    # s = 0
-    # for y in range(len(rocks)):
-    #     points = len(rocks)-y
-    #     s += points * rocks[y].bit_count()
 
+def score(rocks: list[int]) -> int:
     return sum([(len(rocks) - y) * rocks[y].bit_count() for y in range(len(rocks))])
 
 
+def part1(lines: list[str]) -> int:
+    cubes = makecubes(lines)
+    rocks = makerocks(lines)
+    cols = 0
+    tilt(rocks, cubes, cols)
+    return score(rocks)
+
+
+def rotate(grid: list[int], width):
+    m = np.array([list(f"{x:0{width}b}") for x in grid])
+    mr = np.rot90(m, axes=(1, 0))
+    return [int("".join(row), 2) for row in mr]
+
+
 def part2(lines: list[str]) -> int:
-    return 0
+    widths = [len(lines[0].strip()), len(lines)]
+    cubes = makecubes(lines)
+    cubeslist = [cubes]
+    for i in range(3):
+        cubeslist.append(rotate(cubeslist[i], widths[i % 2]))
+
+    rocks = makerocks(lines)
+    cycles = 1000000000
+    spin = 4
+    order = {}
+    rocklist = []
+    for c in range(cycles):
+        for orientation in range(spin):
+            tilt(rocks, cubeslist[orientation])
+            rocks = rotate(rocks, widths[orientation % 2])
+        if tuple(rocks) in order:
+            offset = order[tuple(rocks)]
+            loopsize = c - offset
+            index = ((cycles - offset - 1) % loopsize) + offset
+            return score(rocklist[index])
+        else:
+            order[tuple(rocks)] = c
+            rocklist.append(tuple(rocks))
+
+    return score(rocks)
 
 
 class TestDay14(unittest.TestCase):
@@ -99,13 +103,13 @@ class TestDay14(unittest.TestCase):
         with open("./input14.txt", "r") as f:
             self.assertEqual(part1(list(f)), 108614)
 
-    # def test_2a(self):
-    #     with open('./test14.txt', 'r') as f:
-    #         self.assertEqual(part2(list(f)), None)
+    def test_2a(self):
+        with open("./test14.txt", "r") as f:
+            self.assertEqual(part2(list(f)), 64)
 
-    # def test_2(self):
-    #     with open('./input14.txt', 'r') as f:
-    #         self.assertEqual(part2(list(f)), None)
+    def test_2(self):
+        with open("./input14.txt", "r") as f:
+            self.assertEqual(part2(list(f)), 96447)
 
 
 if __name__ == "__main__":
