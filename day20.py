@@ -2,34 +2,27 @@
 import unittest
 
 from queue import Queue
-import random
 import networkx as nx
 
 
 class Gate(object):
     gates: dict[str:"Gate"]
     runq: Queue[str]
-    # broadcast: list[str]
     broadcaster: "Broadcaster"
     count: list[int, int]
     G: nx.DiGraph
-    # statecount: dict[int : tuple[int, int, int]]
-    # done: str | None
 
     @classmethod
-    def _parse(cls, lines: list[str]):
-        cls.runq = Queue()
+    def parse(cls, lines: list[str]):
         cls.gates = {}
+        cls.runq = Queue()
+        cls.broadcaster = None
         cls.count = [0, 0]
-        # cls.totalcount = [0, 0]
-        # cls.states = []
-        # cls.statecount = {}
         cls.G = nx.DiGraph()
 
-        # , [s.strip() for s in sinks.split(",")]
-        # , [s.strip() for s in sinks.split(",")]
-        # [s.strip() for s in line.strip()[15:].split(",")]
         for line in lines:
+            if line[0] == "#":
+                continue
             if line[0] == "%":
                 source = line.strip().split("->")[0]
                 name = source[1:].strip()
@@ -42,121 +35,155 @@ class Gate(object):
                 cls.broadcaster = Broadcaster()
                 cls.gates["broadcaster"] = cls.broadcaster
 
-        cls.gates["output"] = Gate("output")
-        cls.gates["rx"] = Gate("rx")
+        # cls.gates["output"] = Gate("output")
+        # cls.gates["rx"] = Gate("rx")
 
-        gate, dest = None, None
+        gate, destnames = None, None
         for line in lines:
+            if line[0] == "#":
+                continue
             if line.startswith("broadcaster"):
                 gate = cls.gates["broadcaster"]
-                dest = [cls.gates[s.strip()] for s in line.strip()[15:].split(",")]
-            else:
+                # dest = [cls.gates[s.strip()] for s in line.strip()[15:].split(",")]
+                destnames = [s.strip() for s in line.strip()[15:].split(",")]
+            elif line[0] in "%&":
                 source, sinks = line.strip().split("->")
                 gate = cls.gates[source[1:].strip()]
-                dest = [cls.gates[s.strip()] for s in sinks.split(",")]
+                # dest = [cls.gates[s.strip()] for s in sinks.split(",")]
+                destnames = [s.strip() for s in sinks.split(",")]
+            else:
+                continue
 
-            # elif line[0] == "&":
-            #     source, sinks = line.strip().split("->")
-            #     name = source[1:].strip()
-            #     cls.gates[name].add_outputs(
-            #         [cls.gates[s.strip()] for s in sinks.split(",")]
-            #     )
-            # elif line.startswith("broadcaster"):
-            #     cls.gates["broadcaster"].add_outputs(
-            #         [cls.gates[s.strip()] for s in line.strip()[15:].split(",")]
-            #     )
-            gate.add_outputs(dest)
-            # print("adding", dest)
+            # dest = [cls.gates[name] if name in cls.gates else ]
+
+            for name in destnames:
+                if name not in cls.gates:
+                    cls.gates[name] = Gate(name)
+            dest = [cls.gates[name] for name in destnames]
             for g in dest:
                 g.add_input(gate)
+            gate.add_outputs(dest)
 
-        # for ff in [gate for gate in cls.gates.values() if isinstance(gate, FlipFlop)]:
-        #     # print("found", ff)
-        #     for inv in [
-        #         cls.gates[gate]
-        #         for gate in ff.outputs
-        #         if isinstance(cls.gates[gate], Inverter)
-        #     ]:
-        #         # print("connecting", ff, inv)
-        #         inv.add_input(ff.name)
+            cls.G.add_node(gate)
+            cls.G.add_edges_from(list(zip([gate] * len(gate.outputs), gate.outputs)))
 
     @classmethod
-    def load(cls, lines: list[str]):
-        cls._parse(lines)
-        cls.gates["rx"] = Gate("rx", [])
+    def load(cls, file: str):
+        cls.parse([line.strip() for line in open(file, "r")])
+
+    @classmethod
+    def printrx(cls):
+        rx = cls.gates["rx"]
+        roots = [rx]
+        for i in range(6):
+            next_roots = []
+            for root in roots:
+                print(f"{' '*(i*2)}{root} {list(root.inputs.keys())}")
+                next_roots += root.inputs
+            roots = next_roots
+
+    @classmethod
+    def printbd(cls):
+        roots = [cls.broadcaster]
+        for i in range(6):
+            next_roots = []
+            for k, root in enumerate(roots):
+                print(f"{i}{' '*(i*2)}{k:2} {root} => ", end="")
+                for r in root.outputs:
+                    print(f"{r} ", end="")
+                print()
+                next_roots += root.outputs
+            roots = next_roots
 
     @classmethod
     def push2(cls, lines: list[str]):
-        cls._parse(lines)
-        # cls.gates["rx"] = Gate("rx", [])
-        last_ft = None
+        cls.parse(lines)
+
+        # cls.printbd()
+        # for gate in cls.gates:
+        #     print(gate)
+        inv: Inverter = cls.gates["jz"]
+        invstates: set[str] = set()
         pulse = 0
         while True:
             pulse += 1
 
-            for name in cls.broadcast:
-                cls.gates[name].pulse(cls.broadcaster, 0)
+            cls.broadcaster.run()
             while not cls.runq.empty():
                 gate = cls.runq.get()
                 if gate.run():
-                    return pulse
-            # if cls.gates["ft"].invalue() != last_ft:
-            #     last_ft = cls.gates["ft"].invalue()
-            #     print(pulse, cls.gates["ft"])
+                    if gate.name == "rx":
+                        return pulse
+            v = inv.invalue()
+            # if v == "1" * len(inv.inputs):
+            #     print(pulse, v, len(invstates))
+            if v not in invstates:
+                invstates.add(v)
+                print(pulse, v, len(invstates), len(v))
 
     @classmethod
     def push(cls, lines: list[str], pulses: int):
-        cls._parse(lines)
-        # print(cls.gates["inv"], cls.gates["inv"].outputs)
+        cls.parse(lines)
         for pulse in range(pulses):
             # button push
             cls.count[0] += 1
-            # for name in cls.broadcaster.outputs:
-            #     cls.gates[name].pulse("broadcast", 0)
             cls.broadcaster.run()
-            # print(cls.count)
             while not cls.runq.empty():
                 gate = cls.runq.get()
-                # print(gate)
                 gate.run()
-            # print(cls.count)
-            # state = 0
-            # for gate in cls.gates.values():
-            #     if isinstance(gate, FlipFlop):
-            #         state = (state << 1) + gate.value
-            # # print(cls.count, state)
-            # if state in cls.statecount:
-            #     # print("DUP!", cls.states.index(state), len(cls.states), pulse)
-            #     # start_of_loop = cls.states.index(state)
+            # print(pulse, cls.gates["nd"], cls.gates["nd"].invalue())
+            # for name in ["vz"]:  # ["vz", "bq", "qh", "lt"]:
+            #     inv: Inverter = cls.gates[name]
+            #     if inv.invalue() == "1":
+            #         print(pulse, inv)
+            for name in ["vz"]:  # ["vz", "bq", "qh", "lt"]:
+                inv: Inverter = cls.gates[name]
+                if inv.changed:
+                    print(pulse, inv, inv.invalue())
 
-            # #     start_of_loop = cls.statecount[state][0]
-            # #     loop_size = pulse - start_of_loop
-            # #     to_run = pulses - start_of_loop
-            # #     loop_runs = to_run // loop_size
-            # #     leftover = to_run % loop_size
-            # #     # offset = to_run % loop_size
-
-            # #     cls.count = [0, 0]
-            # #     for state, (pulse, lows, highs) in cls.statecount.items():
-            # #         mult = 0
-            # #         if pulse < start_of_loop:
-            # #             mult = 1
-            # #         else:
-            # #             mult = loop_runs
-            # #             if pulse < start_of_loop + leftover:
-            # #                 mult += 1
-            # #         cls.count[0] += lows * mult
-            # #         cls.count[1] += highs * mult
-            # #     return cls.count[0] * cls.count[1]
-            # # else:
-            # #     cls.statecount[state] = (pulse, cls.count[0], cls.count[1])
-            # #     cls.totalcount[0] += cls.count[0]
-            # #     cls.totalcount[1] += cls.count[1]
-            # #     cls.count = [0, 0]
-
-        # return cls.totalcount[0] * cls.totalcount[1]
-        # print(cls.count)
         return cls.count[0] * cls.count[1]
+
+    @classmethod
+    def related(cls, source: "Gate", nodes: set["Gate"] = None) -> list["Gate"]:
+        if nodes is None:
+            nodes = set([cls.broadcaster, cls.gates["ft"]])
+        nodes.add(source)
+        for g in source.outputs:
+            if g not in nodes:
+                cls.related(g, nodes)
+        for g in source.inputs:
+            if g not in nodes:
+                cls.related(g, nodes)
+        return nodes
+
+    @classmethod
+    def run_subset(cls, name):
+        inv = cls.gates[name]
+        nodes = cls.related(inv)
+
+        for gate in nodes:
+            gate.outputs = [g for g in gate.outputs if g in nodes]
+            # gate.inputs = [g for g in gate.inputs if g in nodes]
+
+        invstates: set[str] = set()
+        pulse = 0
+        while True:
+            pulse += 1
+
+            Gate.broadcaster.run()
+            while not Gate.runq.empty():
+                gate = Gate.runq.get()
+                if gate.run():
+                    if gate.name == "ft":
+                        return pulse
+            v = inv.invalue()
+            # if v == "1" * len(inv.inputs):
+            #     print(pulse, v, len(invstates))
+            if v not in invstates:
+                invstates.add(v)
+            elif len(invstates) == (2 ** len(inv.inputs)) - 1:
+                # print(inv, pulse, v, len(invstates), len(v))
+                return pulse
 
     def __init__(self, name: str):
         self.name = name
@@ -166,6 +193,7 @@ class Gate(object):
         self.pulse_count = 0
         self.debug = False
         self.color = "blue"
+        self.inputs = {}
 
     def __repr__(self) -> str:
         return self.name
@@ -177,7 +205,7 @@ class Gate(object):
         return isinstance(other, type(self)) and self.name == other.name
 
     def add_input(self, source: "Gate"):
-        pass
+        self.inputs[source] = 0
         # print(self, "<-", source)
 
     def add_output(self, other: "Gate"):
@@ -204,7 +232,7 @@ class Gate(object):
 
 class Broadcaster(Gate):
     def __init__(self):
-        super().__init__("Broadcaster")
+        super().__init__("broadcaster")
         self.color = "orange"
 
     def run(self) -> bool:
@@ -223,9 +251,10 @@ class FlipFlop(Gate):
         self.value = 0
         self.color = "red"
 
-    def __repr__(self):
-        return f"FF {self.name}:{self.value}"
-        # return f"%{self.name}"
+    # def __repr__(self):
+    #     return self.name
+    #     # return f"FF {self.name}:{self.value}"
+    #     # return f"%{self.name}"
 
     def pulse(self, source: Gate, p: int):
         super().pulse(source, p, p == 0)
@@ -245,28 +274,36 @@ class FlipFlop(Gate):
 class Inverter(Gate):
     def __init__(self, name: str):
         super().__init__(name)
-        self.inputs = {}
         self.value = 0
         self.color = "green"
+        self.changed = False
 
-    def __repr__(self):
-        # return f"&{self.name}"
-        return f"Inv {self.invalue()}=>{self.value}"
-        # return f"Inv {self.inputs} {self.value}"
+    # def __repr__(self):
+    #     return f"({self.name})"
+    # return f"Inv {self.invalue()}=>{self.value}"
+    # return f"Inv {self.inputs} {self.value}"
 
     def invalue(self) -> str:
         return "".join([str(v) for v in self.inputs.values()])
 
-    def add_input(self, source: Gate):
-        super().add_input(source)
-        self.inputs[source] = 0
+    # def add_input(self, source: Gate):
+    #     super().add_input(source)
+    #     self.inputs[source] = 0
 
     def pulse(self, source: Gate, p: int):
         # if isinstance(source, str):
         #     raise TypeError
         # print("PULSE", self, source)
         super().pulse(source, p)
+        # if self.name == "FT" and self.inputs[source] != p:
+        #     print(self, source, p)
+        # delta = False
+        # if self.name == "ft" and self.inputs[source] != p:
+        #     delta = True
+        # self.changed = len(self.inputs) > 0 and self.inputs[source] != p
         self.inputs[source] = p
+        # if delta:
+        #     print(source, self, self.invalue())
 
     def run(self) -> bool:
         self.value = 0 if all(self.inputs.values()) else 1
@@ -276,22 +313,26 @@ class Inverter(Gate):
         return False
 
 
-def part1(lines: list[str]) -> int:
-    return Gate.push(lines, 1000)
+def part1(lines: list[str], pushes: int = 1000) -> int:
+    return Gate.push(lines, pushes)
 
 
 def part2(lines: list[str]) -> int:
-    return Gate.push2(lines)
+    p = 1
+    for name in ["jz", "sl", "pq", "rr"]:
+        Gate.parse(lines)
+        p *= Gate.run_subset(name)
+    return p
 
 
 class TestDay20(unittest.TestCase):
-    def test_1a(self):
-        with open("./test20.txt", "r") as f:
-            self.assertEqual(part1(list(f)), 32000000)
+    # def test_1a(self):
+    #     with open("./test20.txt", "r") as f:
+    #         self.assertEqual(part1(list(f)), 32000000)
 
-    def test_1b(self):
-        with open("./test20b.txt", "r") as f:
-            self.assertEqual(part1(list(f)), 11687500)
+    # def test_1b(self):
+    #     with open("./test20b.txt", "r") as f:
+    #         self.assertEqual(part1(list(f)), 11687500)
 
     def test_1(self):
         with open("./input20.txt", "r") as f:
@@ -322,9 +363,21 @@ class TestDay20(unittest.TestCase):
     #     with open('./test20.txt', 'r') as f:
     #         self.assertEqual(part2(list(f)), None)
 
+    # def test_2b(self):
+    #     with open("./input20b.txt", "r") as f:
+    #         self.assertEqual(part2(list(f)), None)
+
+    # def test_2c(self):
+    #     with open("./input20.txt", "r") as f:
+    #         self.assertEqual(part1(list(f), 100000), None)
+
     # def test_2(self):
     #     with open("./input20.txt", "r") as f:
     #         self.assertEqual(part2(list(f)), None)  # 737679780 too low
+
+    def test_2(self):
+        with open("./input20.txt", "r") as f:
+            self.assertEqual(part2(list(f)), 227411378431763)  # 737679780 too low
 
 
 if __name__ == "__main__":
