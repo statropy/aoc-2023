@@ -16,6 +16,7 @@ class Path(object):
         self.start: Point = Point(1, 0)
         self.end: Point = Point(len(self.grid[-1]) - 2, len(self.grid) - 1)
         # self.visited: dict[Point:int] = {}
+        self.visited: dict[Point, set[Point]] = {}
         self.tovisit: list[tuple[Point, set[Point]]] = [(self.start, set())]
 
     def walk(self, part: int = 1):
@@ -29,11 +30,14 @@ class Path(object):
             if p.x == self.end.x and p.y == self.end.y:
                 # print(len(history))
                 m = max(m, len(history))
-            # elif p in self.visited:
-            #     self.visited[p] = max(steps, self.visited[p])
-            else:
-                history.add(p)
-                self.tovisit += self.neighbors(p, history)
+                continue
+            if p in self.visited:
+                if len(self.visited[p]) < len(history):
+                    self.visited[p] = history
+                else:
+                    continue
+            history.add(p)
+            self.tovisit += self.neighbors(p, history)
         # print(self.end)
         return m
 
