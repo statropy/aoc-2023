@@ -25,21 +25,28 @@ class Path(object):
             self.dir = self.DIR2
         m = 0
         while len(self.tovisit) > 0:
-            p, history = self.tovisit.pop(0)
+            p, history = self.tovisit.pop()
             # print(p, len(history))
-            if p.x == self.end.x and p.y == self.end.y:
-                # print(len(history))
-                m = max(m, len(history))
-                continue
+            # history.add(p)
+            # if p.x == self.end.x and p.y == self.end.y:
+            #     # print(len(history))
+            #     # m = max(m, len(history))
+            #     self.visited[p] = history
+            #     if len(self.visited[p]) < len(history):
+            #         self.visited[p] += history
+
+            #     continue
             if p in self.visited:
                 if len(self.visited[p]) < len(history):
-                    self.visited[p] = history
+                    self.visited[p] += history
                 else:
                     continue
+            else:
+                self.visited[p] = history
             history.add(p)
             self.tovisit += self.neighbors(p, history)
         # print(self.end)
-        return m
+        return len(self.visited[self.end])
 
     def land(self, p: Point):
         return self.grid[p.y][p.x]
@@ -91,9 +98,9 @@ class TestDay23(unittest.TestCase):
         with open("./test23.txt", "r") as f:
             self.assertEqual(part2(list(f)), 154)
 
-    def test_2(self):
-        with open("./input23.txt", "r") as f:
-            self.assertEqual(part2(list(f)), None)
+    # def test_2(self):
+    #     with open("./input23.txt", "r") as f:
+    #         self.assertEqual(part2(list(f)), None)
 
 
 if __name__ == "__main__":
